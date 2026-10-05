@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coursera Tracker</title>
+<meta name="theme-color" content="#1F4A47">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:wght@500;600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{--ink:#17262A;--soft:#3E5257;--paper:#ECE8DE;--panel:#F6F3EB;--line:#D8D2C2;--brass:#A9803E;--brass2:#7C5B26;--teal:#1F4A47;--tealsoft:#DCE8E4;--err:#9C3B2E;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.45}
+.app{max-width:860px;margin:0 auto;padding:22px 16px 70px}
+h1{font-family:'Newsreader',Georgia,serif;font-weight:600;font-size:28px;margin:0}
+h2,h3{font-family:'Newsreader',Georgia,serif;margin:0 0 6px}
+h2{font-size:20px}h3{font-size:16px}
+header{border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:14px}
+.sub,.mini{font-size:12.5px;color:var(--soft)}
+nav{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--ink);position:sticky;top:0;z-index:5;background:var(--paper)}
+nav button{flex:1;border:0;border-right:1px solid var(--ink);background:none;padding:10px 4px;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+nav button:last-child{border-right:0}
+nav button.on{background:var(--ink);color:var(--paper)}
+.card{background:var(--panel);border:1px solid var(--line);padding:12px 14px;margin:0 0 12px}
+.card.hot{border:2px solid var(--ink)}
+label{display:block;font-size:12px;color:var(--soft);margin:8px 0 2px}
+input,select,textarea{width:100%;font:inherit;padding:8px 9px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:0}
+input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}
+button.p,button.g{font:inherit;font-weight:600;padding:8px 14px;cursor:pointer;border:1px solid var(--ink);border-radius:0}
+button.p{background:var(--teal);color:#fff;border-color:var(--teal)}
+button.g,a.g{background:none;color:var(--ink)}
+a.g{display:inline-block;border:1px solid var(--ink);padding:8px 14px;font-weight:600;text-decoration:none}
+button.p:hover{background:var(--ink)}button.g:hover,a.g:hover{background:var(--ink);color:var(--paper)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}.chips button{padding:4px 10px;font-size:12.5px}
+.bar{height:10px;background:var(--line);margin:6px 0}.bar i{display:block;height:100%;background:var(--brass2)}
+.bar.t i{background:var(--teal)}
+.clk{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums;margin:4px 0}.clk.pz{color:var(--soft)}
+.big{font-family:'Newsreader',Georgia,serif;font-size:30px;font-weight:600;line-height:1.1}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px}
+.note{border-left:4px solid var(--brass);background:#F4F1E8;padding:8px 12px;margin:8px 0;font-size:13px}
+.note.bad{border-color:var(--err)}.note.ok{border-color:var(--teal)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}th{font-size:12px;color:var(--soft);font-weight:600}
+.sess{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.x{background:none;border:0;color:var(--err);cursor:pointer;font:inherit;padding:0 4px}
+.msg{min-height:18px;font-size:12.5px;margin-top:6px;color:var(--teal)}.msg.err{color:var(--err)}
+.cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(14px,1fr));gap:3px;margin:8px 0}
+.cal i{aspect-ratio:1;background:var(--line);display:block}
+.cal i.l1{background:#C9DAD5}.cal i.l2{background:#8FB5AB}.cal i.l3{background:#4D8277}.cal i.l4{background:var(--teal)}
+.cal i.now{outline:2px solid var(--brass2);outline-offset:1px}.cal i.fut{opacity:.35}
+.tag{display:inline-block;font-size:11.5px;padding:1px 8px;border:1px solid var(--line);background:#fff;margin-left:4px}
+.tag.done{background:var(--tealsoft);border-color:var(--teal);color:var(--teal)}
+@media(max-width:520px){h1{font-size:23px}nav button{font-size:12.5px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header><h1>Coursera Tracker</h1><div class="sub" id="hdr"></div></header>
+  <nav id="nav"></nav>
+  <main id="main"></main>
+</div>
+<input type="file" id="imp" accept="application/json" hidden>
+<script>
+const KEY = 'coursera-tracker-v1';
+const ACTS = [['video','Watching lectures'],['reading','Reading'],['quiz','Quiz / graded assessment'],['lab','Hands-on lab / practice'],['peer','Peer review / project'],['review','Review / notes']];
+const TABS = [['log','Log'],['videos','Videos'],['courses','Courses'],['stats','Stats'],['set','Settings']];
+const pad = n => String(n).padStart(2,'0');
+const ds = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today = () => ds(new Date());
+const pd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d = pd(s); d.setDate(d.getDate()+n); return ds(d); };
+const addMonths = (s,n) => { const d = pd(s), k = d.getDate(); d.setMonth(d.getMonth()+n); if(d.getDate() !== k) d.setDate(0); return ds(d); };
+const diff = (a,b) => Math.round((pd(b)-pd(a))/864e5);
+const uid = () => Math.random().toString(36).slice(2,9);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fh = m => (m/60).toFixed(1);
+const fclk = ms => fpos(ms/1000);
+const fpos = s => { s = Math.max(0,Math.floor(s||0)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return (h ? h+':'+pad(m) : m)+':'+pad(s%60); };
+function parseTime(t){
+  t = String(t||'').trim().toLowerCase(); if(!t) return null;
+  let m = t.match(/^(\d+):(\d{1,2})(?::(\d{1,2}))?$/);
+  if(m) return m[3] !== undefined ? +m[1]*3600 + +m[2]*60 + +m[3] : +m[1]*60 + +m[2];
+  m = t.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+  return m && (m[1]||m[2]||m[3]) ? (+m[1]||0)*3600 + (+m[2]||0)*60 + (+m[3]||0) : null;
+}
+
+const EPOCH = '1970-01-01T00:00:00.000Z';
+const now = () => new Date().toISOString();
+// Fixed ids so every device starts with the SAME four courses (needed for syncing).
+const FIX = [['excel','Excel Skills for Business','Excel'],['genai','Generative AI for Educators','GenAI'],
+  ['prompt','Prompt Engineering','Prompt'],['data','Microsoft Data Analysis with SQL, Excel & Power BI','Data']];
+// Course lists and hours as shown on each Coursera specialization page (hours per course).
+const FIXSUBS = {
+  excel: [['Excel Skills for Business: Essentials',26],['Excel Skills for Business: Intermediate I',28],['Excel Skills for Business: Intermediate II',28],['Excel Skills for Business: Advanced',25]],
+  genai: [['Generative AI: Introduction and Applications',8],['Generative AI: Prompt Engineering Basics',10],['Generative AI: Empowering Modern Education',12]],
+  prompt: [['Prompt Engineering for ChatGPT',19],['Advanced Prompt Engineering for Everyone',11],['Trustworthy Generative AI',9]],
+  data: [['SQL Foundations',22],['Data Manipulation and Transactions in SQL Server',15],['Data Cleaning & Processing with Copilot in Excel',19],['Advanced Data Analysis & Visualization with Copilot in Excel',24],['Data Analysis and Visualization with Power BI',27]]
+};
+const META = {
+  excel:  { link: 'https://www.coursera.org/organizations/skills-at-scale/specializations/excel', pace: '3 months at 10 h/week' },
+  genai:  { link: 'https://www.coursera.org/organizations/skills-at-scale/specializations/generative-ai-educators', pace: '7 h/week' },
+  prompt: { link: 'https://www.coursera.org/organizations/skills-at-scale/specializations/prompt-engineering', pace: '10 h/week' },
+  data:   { link: 'https://www.coursera.org/organizations/skills-at-scale/specializations/microsoft-data-analysis-sql-excel-powerbi', pace: '5 months at 7 h/week' }
+};
+function defSubs(){
+  const o = [];
+  Object.keys(FIXSUBS).forEach(cid => FIXSUBS[cid].forEach((x,i) => o.push({ id: cid+'-'+(i+1), course: cid, ord: i+1, name: x[0], h: x[1], done: false, u: EPOCH })));
+  return o;
+}
+function defaults(){
+  const st = '2026-09-23';
+  return { start: st, end: addMonths(st,3), wu: EPOCH,
+    courses: FIX.map(f => ({ id: f[0], name: f[1], short: f[2], targetH: 20, totalVideos: 0, priority: 2, done: false, u: EPOCH })),
+    subs: defSubs(), dpw: 7, buf: 0, sessions: [], resume: [], timer: null, tomb: {} };
+}
+// Brings older saved data (before syncing existed) up to date: stable course ids, timestamps.
+function migrate(){
+  const t = now(), map = {};
+  S.courses.forEach(c => {
+    if(!FIX.some(f => f[0] === c.id)){ const f = FIX.find(f => f[1] === c.name); if(f){ map[c.id] = f[0]; c.id = f[0]; c.u = t; } }
+    if(!c.u) c.u = EPOCH;
+  });
+  const seen = {}; S.courses = S.courses.filter(c => !seen[c.id] && (seen[c.id] = 1));
+  [S.sessions, S.resume].forEach(l => l.forEach(x => { if(map[x.course]) x.course = map[x.course]; if(!x.u) x.u = t; }));
+  if(!S.tomb) S.tomb = {};
+  if(!Array.isArray(S.subs)) S.subs = [];
+  defSubs().forEach(d => { if(!S.subs.some(x => x.id === d.id) && !S.tomb['sub|'+d.id]) S.subs.push(d); });
+  if(!S.dpw) S.dpw = 7; if(S.buf == null) S.buf = 0;
+  if(!S.wu) S.wu = (S.start === '2026-09-23' && S.end === addMonths('2026-09-23',3)) ? EPOCH : t;
+}
+let S;
+try { S = Object.assign(defaults(), JSON.parse(localStorage.getItem(KEY) || '{}')); } catch(e){ S = defaults(); }
+migrate();
+// Sheet connection settings live apart from the data, so backups never contain the secret.
+let CFG = {}; try { CFG = JSON.parse(localStorage.getItem(KEY+'-cfg') || '{}'); } catch(e){}
+const saveCfg = () => { try { localStorage.setItem(KEY+'-cfg', JSON.stringify(CFG)); } catch(e){} };
+const save = quiet => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} if(!quiet) bump(); };
+
+let tab = 'log', draft = {}, rdraft = {}, pastes = {}, pending = null, flash = '', flashErr = false;
+const say = (m,err) => { flash = m; flashErr = !!err; };
+const course = id => S.courses.find(c => c.id === id) || S.courses[0];
+const subsOf = id => S.subs.filter(x => x.course === id).sort((a,b) => a.ord-b.ord);
+const isDone = c => { const sb = subsOf(c.id); return sb.length ? sb.every(x => x.done) : !!c.done; };
+const firstOpenSub = cid => subsOf(cid).find(x => !x.done);
+const cOpts = sel => S.courses.map(c => `<option value="${c.id}"${c.id===sel?' selected':''}>${esc(c.short||c.name)}${isDone(c)?' (done)':''}</option>`).join('');
+function subOpts(cid, sel){
+  const sb = subsOf(cid); if(!sb.length) return '<option value="none">General</option>';
+  const def = sel ?? firstOpenSub(cid)?.id ?? 'none';
+  return sb.map(x => `<option value="${x.id}"${x.id===def?' selected':''}>${x.ord}. ${esc(x.name)}${x.done?' (done)':''}</option>`).join('') + `<option value="none"${def==='none'?' selected':''}>General / not sure</option>`;
+}
+
+// ---------- numbers ----------
+const cMin = id => S.sessions.filter(x => x.course===id).reduce((a,x) => a+x.min, 0);
+const cVid = id => S.sessions.filter(x => x.course===id).reduce((a,x) => a+(x.videos||0), 0);
+const dayMap = () => { const m = {}; S.sessions.forEach(x => m[x.date] = (m[x.date]||0) + x.min); return m; };
+const rangeMin = (from,to,id) => S.sessions.filter(x => x.date>=from && x.date<=to && (!id || x.course===id)).reduce((a,x) => a+x.min, 0);
+// Hours left for one specialization = what is left in each unfinished course inside it
+// (recommended hours minus time logged on that course). Time logged without choosing a course
+// is applied to the unfinished courses in order.
+function cStat(c){
+  const sb = subsOf(c.id);
+  if(!sb.length){ const total = c.targetH || 0; return { total, rem: c.done ? 0 : Math.max(0, total - cMin(c.id)/60), items: [] }; }
+  let pool = S.sessions.filter(x => x.course === c.id && !sb.some(z => z.id === x.sub)).reduce((a,x) => a+x.min, 0)/60;
+  const items = sb.map(z => {
+    const lg = S.sessions.filter(x => x.sub === z.id).reduce((a,x) => a+x.min, 0)/60; let rem = 0;
+    if(!z.done){ const need = Math.max(0, z.h-lg), take = Math.min(need, pool); pool -= take; rem = need-take; }
+    return { s: z, lg, rem };
+  });
+  return { total: sb.reduce((a,z) => a+z.h, 0), rem: items.reduce((a,i) => a+i.rem, 0), items };
+}
+const remH = c => cStat(c).rem;
+function pct(c){ const st = cStat(c); return st.total > 0 ? Math.min(100, Math.round((1-st.rem/st.total)*100)) : (isDone(c) ? 100 : 0); }
+function plan(){
+  const t = today(), total = diff(S.start,S.end)+1, dpw = S.dpw || 7;
+  const dayNo = Math.min(Math.max(diff(S.start,t)+1,0),total), left = Math.max(0, diff(t,S.end)+1);
+  const from = t < S.start ? S.start : t, last = addDays(S.end, -(S.buf||0));
+  const leftCal = Math.max(0, diff(from,last)+1), leftStudy = Math.ceil(leftCal*dpw/7);
+  const rem = S.courses.reduce((a,c) => a+remH(c), 0), totalH = S.courses.reduce((a,c) => a+cStat(c).total, 0);
+  const win = Math.max(1, Math.min(14, diff(S.start,t)+1)), avg = rangeMin(addDays(t,-(win-1)),t)/60/win;
+  const needDay = leftStudy ? rem/leftStudy : 0;
+  const finish = rem === 0 ? t : avg > 0 ? addDays(t, Math.ceil(rem/avg)) : null;
+  return { t, total, dayNo, left, from, last, leftCal, leftStudy, dpw, rem, totalH, avg, needDay, needWeek: needDay*dpw, finish, late: finish && finish > S.end, expired: t > S.end, notStarted: t < S.start };
+}
+// Courses run one after another in priority order at the pace needed; shows when each would finish.
+function schedule(){
+  const p = plan(), list = S.courses.filter(c => !isDone(c)).sort((a,b) => (a.priority-b.priority) || (remH(b)-remH(a)));
+  let cum = 0;
+  return list.map(c => {
+    const r = remH(c); cum += r;
+    const sd = p.needDay > 0 ? Math.ceil(cum/p.needDay - 1e-9) : 0, cal = Math.ceil(sd*7/p.dpw);
+    return { c, r, share: p.leftStudy ? r/p.leftStudy : 0, by: p.needDay > 0 && !p.expired ? addDays(p.from, Math.max(0,cal-1)) : '' };
+  });
+}
+function wiText(x){
+  const p = plan(); if(!(x > 0)) return 'Enter the hours you can study per day.';
+  if(p.rem === 0) return 'Nothing left to do.';
+  const sd = Math.ceil(p.rem/x - 1e-9), date = addDays(p.from, Math.max(0, Math.ceil(sd*7/p.dpw)-1)), d = diff(date, S.end);
+  return `At <strong>${x} h per study day</strong> (${(x*p.dpw).toFixed(1)} h/week) you would finish about <strong>${date}</strong> — ${d >= 0 ? d+' day'+(d===1?'':'s')+' before' : (-d)+' day'+(d===-1?'':'s')+' after'} the programme ends.`;
+}
+function nextCourse(){
+  const open = S.courses.filter(c => !isDone(c));
+  return open.sort((a,b) => (a.priority-b.priority) || (remH(b)-remH(a)))[0];
+}
+function streak(){
+  const m = dayMap(); let d = today(); if(!m[d]) d = addDays(d,-1);
+  let n = 0; while(m[d] > 0){ n++; d = addDays(d,-1); } return n;
+}
+
+// ---------- actions ----------
+function startTimer(){
+  const tc = draft.tcourse || nextCourse()?.id || S.courses[0].id, ts = draft.tsub ?? firstOpenSub(tc)?.id ?? 'none';
+  S.timer = { course: tc, sub: ts === 'none' ? '' : ts, act: draft.tact || 'video', acc: 0, since: Date.now(), running: true };
+  save(); render();
+}
+function toggleTimer(){
+  const t = S.timer; if(!t) return;
+  if(t.running){ t.acc += Date.now()-t.since; t.running = false; } else { t.since = Date.now(); t.running = true; }
+  save(); render();
+}
+const elapsed = t => t ? t.acc + (t.running ? Date.now()-t.since : 0) : 0;
+function stopTimer(){
+  const t = S.timer; if(!t) return;
+  pending = { course: t.course, act: t.act, min: Math.max(1, Math.round(elapsed(t)/60000)) };
+  draft = Object.assign(draft, { course: t.course, sub: t.sub || 'none', act: t.act, min: pending.min });
+  S.timer = null; save(); render();
+}
+function saveSession(){
+  const m = parseFloat(draft.min), date = draft.date || today();
+  if(!(m > 0 && m <= 720)) return say('Enter minutes between 1 and 720.', 1), render();
+  if(date > today()) return say('That date is in the future.', 1), render();
+  const cid = draft.course || nextCourse()?.id || S.courses[0].id;
+  let sub = draft.sub ?? firstOpenSub(cid)?.id ?? ''; if(sub === 'none' || !subsOf(cid).some(z => z.id === sub)) sub = '';
+  S.sessions.push({ id: uid(), date, course: cid, sub, act: draft.act || 'video',
+    min: Math.round(m*10)/10, videos: parseInt(draft.videos,10) || 0, note: (draft.note||'').trim(), src: pending ? 'timer' : 'manual', u: now() });
+  say(`Logged ${m} min.`); pending = null; draft = {}; save(); render();
+}
+function addResume(){
+  const url = (rdraft.url||'').trim(), title = (rdraft.title||'').trim();
+  if(!url && !title) return say('Add a title or a link.', 1), render();
+  let pos = parseTime(rdraft.pos);
+  if((rdraft.pos||'').trim() && pos === null) return say('Time not understood. Use 12:34, 1:02:03 or 5m30s.', 1), render();
+  const now_ = new Date().toISOString();
+  let it = url && S.resume.find(x => x.url === url && !x.done);
+  if(!it){ it = { id: uid(), course: rdraft.course || nextCourse()?.id || S.courses[0].id, title: '', url, pos: 0, done: false, u: now() }; S.resume.push(it); }
+  it.course = rdraft.course || it.course; it.title = title || it.title || (url ? new URL(/^https?:/.test(url) ? url : 'https://'+url).hostname : 'Untitled');
+  if(pos !== null) it.pos = pos; it.touched = now_; it.u = now_;
+  say('Saved.'); rdraft = { course: it.course }; save(); render();
+}
+function finishResume(id){
+  const it = S.resume.find(x => x.id === id); if(!it) return;
+  it.done = true; it.touched = it.u = now();
+  S.sessions.push({ id: uid(), date: today(), course: it.course, act: 'video', min: 0, videos: 1, note: it.title, src: 'video', u: now() });
+  say('Marked finished and counted as 1 video.'); save(); render();
+}
+// Reads text copied from a Coursera specialization page and finds "course name ... N hours" pairs.
+// The name is the nearest sensible line above the hours figure. Weekly pace lines are ignored.
+function parseHours(text){
+  const lines = String(text||'').split(/\r?\n/).map(s => s.replace(/\s+/g,' ').trim()).filter(Boolean);
+  const hrs = /(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\b/i, skip = /per week|\/ ?week|a week|each week|month|weeks?\b|^course\s*\d+$|^step\s*\d+|^\d+\s*(?:hours?|hrs?)$/i;
+  const out = []; let cand = '';
+  lines.forEach(l => {
+    const m = l.match(hrs);
+    if(m && !/per week|\/ ?week|a week|each week|month/i.test(l)){
+      let name = l.replace(hrs,'').replace(/^[\s·•\-–—|:,()]+|[\s·•\-–—|:,()]+$/g,'').replace(/^(approx\.?|about|approximately)\s*/i,'').replace(/\s*to complete$/i,'').trim();
+      if(name.length < 6 || /^(approx|about|hours?|to complete)/i.test(name) || /^(course|module|lesson|class)s?$/i.test(name)) name = cand;
+      if(name && !out.some(o => o.name === name)) out.push({ name, h: parseFloat(m[1]) });
+      cand = '';
+    } else if(!skip.test(l) && l.length >= 6 && l.length <= 140) cand = l;
+  });
+  return out;
+}
+function importHours(cid){
+  const found = parseHours(pastes[cid]);
+  if(!found.length) return say('Could not find any "N hours" lines in that text. Copy the course list section of the Coursera page, including the hours.', 1), render();
+  const list = found.map((x,i) => (i+1)+'. '+x.name+' — '+x.h+' h').join('\n'), sum = found.reduce((a,x) => a+x.h, 0);
+  if(!confirm('Found '+found.length+' courses, '+sum+' h in total:\n\n'+list+'\n\nReplace this specialization\'s course list with these?')) return;
+  const old = subsOf(cid), t = now();
+  found.forEach((x,i) => {
+    const z = old[i];
+    if(z){ z.name = x.name; z.h = x.h; z.u = t; }
+    else S.subs.push({ id: cid+'-'+(i+1), course: cid, ord: i+1, name: x.name, h: x.h, done: false, u: t });
+  });
+  old.slice(found.length).forEach(z => { S.subs = S.subs.filter(q => q.id !== z.id); S.tomb['sub|'+z.id] = t; });
+  delete pastes[cid]; say('Updated '+found.length+' courses ('+sum+' h).'); save(); render();
+}
+function download(name, text, type){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ---------- views ----------
+function deadlineCard(){
+  const p = plan(), pctTime = Math.round(p.dayNo/p.total*100), doneH = p.totalH - p.rem, today_ = (dayMap()[p.t]||0)/60;
+  let verdict;
+  if(p.rem === 0) verdict = '<div class="note ok">All four courses are complete.</div>';
+  else if(p.expired) verdict = '<div class="note bad">The programme window has ended. Check with Digital Rakyat whether you can still finish.</div>';
+  else if(p.notStarted) verdict = `<div class="note">Your window opens in ${diff(p.t,S.start)} day(s). Once it opens you need about <strong>${p.needDay.toFixed(1)} h per study day</strong>.</div>`;
+  else verdict = `<div class="note ${p.late || !p.finish ? 'bad' : 'ok'}">To finish by <strong>${p.last}</strong> you need <strong>${p.needDay.toFixed(1)} h per study day</strong> (${p.needWeek.toFixed(0)} h/week) for the next ${p.leftStudy} study days. Today so far: ${today_.toFixed(1)} h. Your last-14-day pace is ${p.avg.toFixed(1)} h/day${p.finish ? p.late ? ` — that would finish about <strong>${p.finish}</strong>, after the deadline.` : ` — on track to finish about <strong>${p.finish}</strong>.` : ' — log some time to get a forecast.'}</div>`;
+  return `<div class="card"><h2>Hours to finish all four</h2>
+    <div class="grid"><div><div class="big">${p.rem.toFixed(0)} h</div><div class="mini">left of ${p.totalH.toFixed(0)} h in total</div></div>
+    <div><div class="big">${p.needDay.toFixed(1)} h</div><div class="mini">needed per study day</div></div>
+    <div><div class="big">${p.expired ? 0 : p.left}</div><div class="mini">days left (ends ${S.end})</div></div>
+    <div><div class="big">${streak()}</div><div class="mini">day streak</div></div></div>
+    <div class="mini" style="margin-top:8px">Hours done: ${Math.round(doneH)} of ${Math.round(p.totalH)}</div><div class="bar t"><i style="width:${p.totalH ? Math.round(doneH/p.totalH*100) : 0}%"></i></div>
+    <div class="mini">Time used: day ${p.dayNo} of ${p.total}</div><div class="bar"><i style="width:${pctTime}%"></i></div>${verdict}</div>`;
+}
+function logView(){
+  const t = S.timer, nx = nextCourse(), dm = dayMap()[today()] || 0;
+  let h = deadlineCard() + remainingCard();
+  if(nx) h += `<div class="note">Suggested next: <strong>${esc(nx.name)}</strong> — priority ${nx.priority}, about ${remH(nx).toFixed(1)} h to go.</div>`;
+  if(t){
+    h += `<div class="card hot"><h3>Timer running — ${esc(course(t.course).short)}${t.sub ? ' #'+(S.subs.find(z => z.id===t.sub)?.ord||'') : ''} · ${esc(ACTS.find(a=>a[0]===t.act)[1])}</h3>
+      <div class="clk${t.running?'':' pz'}" id="clk">${fclk(elapsed(t))}</div>
+      <div class="acts"><button class="g" data-a="pause">${t.running?'Pause':'Resume'}</button><button class="p" data-a="stop">Stop &amp; log</button></div>
+      <p class="mini">It keeps counting if you close the page, because it works from the start time.</p></div>`;
+  } else if(!pending){
+    h += `<div class="card"><h3>Start a timed session</h3><div class="row">
+      <div><label>Specialization</label><select data-d="tcourse">${cOpts(draft.tcourse || nx?.id)}</select></div>
+      <div><label>Course inside it</label><select data-d="tsub">${subOpts(draft.tcourse || nx?.id, draft.tsub)}</select></div>
+      <div><label>Activity</label><select data-d="tact">${ACTS.map(a => `<option value="${a[0]}"${draft.tact===a[0]?' selected':''}>${a[1]}</option>`).join('')}</select></div></div>
+      <div class="acts"><button class="p" data-a="start">Start timer</button></div></div>`;
+  }
+  h += `<div class="card" id="form"><h3>${pending ? 'Timer stopped — check and save' : 'Log time manually'}</h3>
+    <div class="row"><div><label>Specialization</label><select data-d="course">${cOpts(draft.course || nx?.id)}</select></div>
+    <div><label>Course inside it</label><select data-d="sub">${subOpts(draft.course || nx?.id, draft.sub)}</select></div>
+    <div><label>Activity</label><select data-d="act">${ACTS.map(a => `<option value="${a[0]}"${draft.act===a[0]?' selected':''}>${a[1]}</option>`).join('')}</select></div></div>
+    <div class="row"><div><label>Minutes</label><input type="number" inputmode="numeric" min="1" max="720" data-d="min" value="${esc(draft.min ?? '')}" placeholder="e.g. 45"></div>
+    <div><label>Date</label><input type="date" data-d="date" max="${today()}" value="${esc(draft.date || today())}"></div>
+    <div><label>Videos finished</label><input type="number" inputmode="numeric" min="0" data-d="videos" value="${esc(draft.videos ?? '')}" placeholder="0"></div></div>
+    ${pending ? '' : `<div class="chips">${[15,30,45,60,90,120].map(m => `<button class="g" data-a="chip" data-m="${m}">${m} min</button>`).join('')}</div>`}
+    <label>Note (optional)</label><input type="text" data-d="note" value="${esc(draft.note||'')}" placeholder="e.g. Week 2, pivot tables">
+    <div class="acts"><button class="p" data-a="save">Save session</button>${pending ? '<button class="g" data-a="discard">Discard</button>' : ''}</div>
+    <div class="msg${flashErr?' err':''}">${esc(flash)}</div></div>`;
+  h += `<div class="card"><h3>Today: ${Math.round(dm)} min</h3>${S.courses.map(c => `<div class="sess"><span>${esc(c.short||c.name)}</span><strong>${Math.round(rangeMin(today(),today(),c.id))} min</strong></div>`).join('')}</div>`;
+  const rec = [...S.sessions].sort((a,b) => (b.date+b.id).localeCompare(a.date+a.id)).slice(0,12);
+  h += `<div class="card"><h3>Recent sessions</h3>${rec.length ? rec.map(x => `<div class="sess"><span>${x.date} · <strong>${x.min} min</strong> · ${esc(course(x.course).short)}${x.sub ? ' #'+(S.subs.find(z => z.id===x.sub)?.ord||'') : ''}${x.videos ? ' · '+x.videos+' video'+(x.videos>1?'s':'') : ''}${x.note ? ' — '+esc(x.note) : ''}</span><button class="x" data-a="del" data-id="${x.id}" aria-label="Delete session">✕</button></div>`).join('') : '<p class="mini">Nothing logged yet. Start the timer or add minutes above.</p>'}</div>`;
+  return h;
+}
+function resumeRow(it, big){
+  return `<div style="${big?'':'padding:8px 0;border-top:1px solid var(--line)'}"><div style="${big?'font-size:16px':''}"><strong>${esc(it.title)}</strong><span class="tag">${esc(course(it.course).short)}</span></div>
+    <div class="mini">${it.pos ? 'stopped at <strong>'+fpos(it.pos)+'</strong>' : 'no time saved'} · ${new Date(it.touched).toLocaleDateString()}</div>
+    <div class="acts">${it.url ? `<a class="g" href="${esc(/^https?:/.test(it.url) ? it.url : 'https://'+it.url)}" target="_blank" rel="noopener">Open</a>` : ''}<button class="g" data-a="pos" data-id="${it.id}">Update time</button><button class="g" data-a="fin" data-id="${it.id}">Finished</button><button class="x" data-a="rdel" data-id="${it.id}">Delete</button></div></div>`;
+}
+function videosView(){
+  const open = S.resume.filter(x => !x.done).sort((a,b) => b.touched.localeCompare(a.touched));
+  const done = S.resume.filter(x => x.done).length;
+  return `<div class="card hot"><h2>Continue where I stopped</h2>
+    ${open[0] ? '<div class="mini">Last one you were on</div>'+resumeRow(open[0],true) : '<p class="mini">Nothing saved yet. Add a lecture below.</p>'}</div>
+  <div class="card"><h3>Save my spot</h3>
+    <div class="row"><div><label>Course</label><select data-r="course">${cOpts(rdraft.course || nextCourse()?.id)}</select></div>
+    <div><label>Stopped at</label><input type="text" data-r="pos" value="${esc(rdraft.pos||'')}" placeholder="12:34"></div></div>
+    <label>Lecture title</label><input type="text" data-r="title" value="${esc(rdraft.title||'')}" placeholder="e.g. Week 2 · Lookup functions">
+    <label>Link to the lecture (optional)</label><input type="text" data-r="url" value="${esc(rdraft.url||'')}" placeholder="https://www.coursera.org/learn/…">
+    <div class="acts"><button class="p" data-a="radd">Save / update</button></div>
+    <div class="msg${flashErr?' err':''}">${esc(flash)}</div>
+    <p class="mini">Coursera links don't carry the time, so type where you stopped. Saving the same link again updates its time. “Finished” counts the lecture as one video on that course.</p></div>
+  ${open.length > 1 ? `<div class="card"><h3>Earlier</h3>${open.slice(1,15).map(x => resumeRow(x,false)).join('')}</div>` : ''}
+  <p class="mini">${done} lecture${done===1?'':'s'} marked finished from this list.</p>`;
+}
+// Remaining time per specialization: hours left, courses left, and what finishing it needs.
+function remainingCard(){
+  const p = plan(), fmt = h => h >= 10 ? h.toFixed(0) : h.toFixed(1);
+  let nTot = 0, nLeft = 0;
+  const rows = S.courses.map(c => {
+    const st = cStat(c), n = st.items.length, left = st.items.filter(i => !i.s.done).length;
+    nTot += n; nLeft += left;
+    const alone = p.leftStudy && !p.expired ? st.rem/p.leftStudy : 0;
+    const fin = st.rem === 0 ? 'done' : (p.avg > 0 ? addDays(p.from, Math.ceil(st.rem/p.avg)-1) : '—');
+    return `<tr><td>${esc(c.short||c.name)}</td><td>${n ? left+' of '+n : '—'}</td><td><strong>${fmt(st.rem)}</strong> of ${fmt(st.total)}</td><td>${pct(c)}%</td><td>${st.rem === 0 ? '—' : alone.toFixed(2)}</td><td>${fin}</td></tr>`;
+  }).join('');
+  const bad = rows && p.rem > 0 && !p.expired;
+  return `<div class="card"><h2>Time remaining per specialization</h2>
+    <p class="mini">Total programme: <strong>${p.totalH.toFixed(0)} h</strong> across ${nTot} courses. Left: <strong>${p.rem.toFixed(1)} h</strong> in ${nLeft} courses. Deadline ${S.end}${S.buf ? ' (target '+p.last+')' : ''}.</p>
+    <table><tr><th>Specialization</th><th>Courses left</th><th>Hours left</th><th>Done</th><th>h/day alone</th><th>Done by (your pace)</th></tr>${rows}
+    <tr><th>All</th><th>${nLeft} of ${nTot}</th><th>${p.rem.toFixed(1)} of ${p.totalH.toFixed(0)}</th><th>${p.totalH ? Math.round((1-p.rem/p.totalH)*100) : 0}%</th><th>${p.needDay.toFixed(2)}</th><th>${p.finish || '—'}</th></tr></table>
+    <p class="mini"><strong>h/day alone</strong> = daily hours needed if this were the only specialization you studied until the deadline. <strong>Done by</strong> assumes your last-14-day pace goes entirely to that one. The bottom row is all four together, which is what you actually need to hit each day.</p></div>`;
+}
+function planCard(){
+  const p = plan(); if(p.rem === 0 || p.expired) return '';
+  const rows = schedule(), wi = draft.wi ?? (Math.ceil(p.needDay*10)/10 || 2);
+  return `<div class="card"><h2>Daily plan</h2>
+    <p class="mini">Hours left in each specialization, and the daily time each one needs if you spread them evenly so everything finishes by ${p.last}. “Finish by” runs them one after another in priority order at the pace you need. You can mix them in any order.</p>
+    <table><tr><th>Specialization</th><th>Hours left</th><th>Daily share</th><th>Finish by</th></tr>
+    ${rows.map(r => `<tr><td>${esc(r.c.short||r.c.name)}</td><td>${r.r.toFixed(1)}</td><td>${r.share.toFixed(2)} h</td><td>${r.by||'—'}</td></tr>`).join('')}
+    <tr><th>Total</th><th>${p.rem.toFixed(1)}</th><th>${p.needDay.toFixed(2)} h</th><th>${p.last}</th></tr></table>
+    <p class="mini">Counted over ${p.leftStudy} study days (${p.dpw} per week, up to ${p.last}). Change study days per week or a safety buffer in Settings.</p>
+    <label>What if I study this many hours per study day?</label><input type="number" min="0.5" step="0.5" data-w="wi" value="${esc(wi)}">
+    <div class="note" id="wiOut">${wiText(parseFloat(wi))}</div></div>`;
+}
+function coursesView(){
+  return deadlineCard() + remainingCard() + planCard() + S.courses.map(c => {
+    const st = cStat(c), p = pct(c), P = plan(), v = cVid(c.id), w = rangeMin(addDays(P.t,-6),P.t,c.id), m = META[c.id] || {}, done = isDone(c);
+    return `<div class="card"><h3>${esc(c.name)}${done ? '<span class="tag done">complete</span>' : ''}<span class="tag">priority ${c.priority}</span></h3>
+      <div class="bar t"><i style="width:${p}%"></i></div>
+      <div><strong>${p}%</strong> · ${(st.total-st.rem).toFixed(1)} of ${st.total.toFixed(0)} h${c.totalVideos ? ` · ${v} of ${c.totalVideos} videos` : v ? ` · ${v} videos` : ''}</div>
+      <div class="mini">${done ? 'Finished.' : `<strong>${st.rem.toFixed(1)} h left</strong>${P.leftStudy && !P.expired ? ` · ${(st.rem/P.leftStudy).toFixed(2)} h per study day if this were the only one` : ''} · last 7 days: ${fh(w)} h`}${m.pace ? ` · Coursera suggests ${esc(m.pace)}` : ''}</div>
+      ${st.items.map(i => `<div class="sess"><span><input type="checkbox" style="width:auto;margin-right:8px" data-a="subdone" data-id="${i.s.id}"${i.s.done?' checked':''} aria-label="Mark course ${i.s.ord} done"><span style="${i.s.done?'text-decoration:line-through;color:var(--soft)':''}">${i.s.ord}. ${esc(i.s.name)}</span><div class="mini" style="margin-left:26px">${i.lg.toFixed(1)} h logged of ${i.s.h} h recommended</div></span><strong>${i.s.done ? '✓' : i.rem.toFixed(1)+' h'}</strong></div>`).join('')}
+      <div class="acts">${m.link ? `<a class="g" href="${m.link}" target="_blank" rel="noopener">Open on Coursera</a>` : ''}<button class="g" data-a="cdone" data-id="${c.id}">${done ? 'Reopen all courses' : 'Mark all complete'}</button></div></div>`;
+  }).join('');
+}
+function statsView(){
+  const m = dayMap(), p = plan(), total = S.sessions.reduce((a,x) => a+x.min, 0);
+  const cells = []; for(let i = 0; i < p.total; i++){ const d = addDays(S.start,i), v = m[d]||0;
+    cells.push(`<i class="${v>=120?'l4':v>=60?'l3':v>=30?'l2':v>0?'l1':''}${d===p.t?' now':''}${d>p.t?' fut':''}" title="${d}: ${Math.round(v)} min"></i>`); }
+  const best = Object.entries(m).sort((a,b) => b[1]-a[1])[0];
+  const by = {}; S.sessions.forEach(x => by[x.act] = (by[x.act]||0) + x.min);
+  return `<div class="card"><h3>Every day of the window</h3><div class="cal">${cells.join('')}</div>
+    <p class="mini">Darker means more time: under 30, 30, 60 and 120+ minutes. The outlined square is today.</p></div>
+  <div class="card"><h3>Totals</h3><div class="grid"><div><div class="big">${fh(total)} h</div><div class="mini">logged overall</div></div>
+    <div><div class="big">${Object.keys(m).length}</div><div class="mini">days studied</div></div>
+    <div><div class="big">${best ? fh(best[1])+' h' : '—'}</div><div class="mini">best day${best ? ' ('+best[0]+')' : ''}</div></div></div></div>
+  <div class="card"><h3>By course</h3><table><tr><th>Course</th><th>7 days</th><th>28 days</th><th>All</th></tr>
+    ${S.courses.map(c => `<tr><td>${esc(c.short||c.name)}</td><td>${fh(rangeMin(addDays(p.t,-6),p.t,c.id))}</td><td>${fh(rangeMin(addDays(p.t,-27),p.t,c.id))}</td><td>${fh(cMin(c.id))}</td></tr>`).join('')}</table><p class="mini">Hours.</p></div>
+  <div class="card"><h3>By activity</h3>${ACTS.map(a => `<div class="sess"><span>${a[1]}</span><strong>${fh(by[a[0]]||0)} h</strong></div>`).join('')}</div>`;
+}
+function setView(){
+  return syncCard() + `<div class="card"><h2>Programme window</h2><div class="row"><div><label>Start date</label><input type="date" data-s="start" value="${S.start}"></div>
+    <div><label>Ends (3 months by default)</label><input type="date" data-s="end" value="${S.end}"></div></div>
+    <div class="row"><div><label>Study days per week</label><select data-s="dpw">${[7,6,5,4,3].map(n => `<option value="${n}"${(S.dpw||7)===n?' selected':''}>${n}${n===7?' (every day)':''}</option>`).join('')}</select></div>
+    <div><label>Finish this many days before the end</label><input type="number" min="0" max="30" data-s="buf" value="${S.buf||0}"></div></div>
+    <p class="mini">These two change the hours-per-day you need. A buffer of a few days leaves room for a missed week or a retaken quiz.</p>
+    <div class="acts"><button class="g" data-a="end3">Set end to 3 months after start</button></div></div>
+  ${S.courses.map((c,i) => { const sb = subsOf(c.id), m = META[c.id] || {};
+    return `<div class="card"><h3>${esc(c.name)}</h3>
+    <label>Name</label><input type="text" data-c="${i}.name" value="${esc(c.name)}">
+    <div class="row"><div><label>Short name</label><input type="text" data-c="${i}.short" value="${esc(c.short)}"></div>
+    <div><label>Total videos (0 = unknown)</label><input type="number" min="0" data-c="${i}.totalVideos" value="${c.totalVideos}"></div>
+    <div><label>Priority</label><select data-c="${i}.priority">${[1,2,3,4].map(n => `<option value="${n}"${c.priority===n?' selected':''}>${n}${n===1?' (first)':n===4?' (last)':''}</option>`).join('')}</select></div></div>
+    <label>Courses inside it, with recommended hours (total ${sb.reduce((a,x) => a+x.h, 0)} h)</label>
+    ${sb.map(x => `<div class="row" style="margin-bottom:6px"><input type="text" style="flex:4" data-b="${x.id}.name" value="${esc(x.name)}" aria-label="Course name"><input type="number" style="flex:1;min-width:70px" min="0" step="0.5" data-b="${x.id}.h" value="${x.h}" aria-label="Recommended hours"></div>`).join('')}
+    <label>Update hours from Coursera: open the page, select the course list, copy, paste here</label>
+    <textarea rows="4" data-p="${c.id}" placeholder="Paste the text from the Coursera page. Lines like 'Course name' followed by '26 hours' are picked up.">${esc(pastes[c.id]||'')}</textarea>
+    <div class="acts"><button class="p" data-a="imphrs" data-id="${c.id}">Read hours from pasted text</button><button class="g" data-a="subreset" data-id="${c.id}">Reset to built-in hours</button>${m.link ? `<a class="g" href="${m.link}" target="_blank" rel="noopener">Open Coursera page</a>` : ''}</div></div>`; }).join('')}
+  <p class="mini">Hours come from the Coursera listing for each specialization. Your organisation's version may differ a little: check the course page and correct any number here.</p>
+  <div class="card"><h3>Backup</h3><p class="mini">Everything is stored in this browser. With sync on, it is also in your Sheet. Download a backup now and then, especially before clearing browser data.</p>
+    <div class="acts"><button class="p" data-a="exp">Download backup (JSON)</button><button class="g" data-a="csv">Export sessions (CSV)</button><button class="g" data-a="imp">Restore from backup</button><button class="x" data-a="reset">Erase everything</button></div>
+    <div class="msg${flashErr?' err':''}">${esc(flash)}</div></div>`;
+}
+
+// ---------- Google Sheet sync ----------
+// One round trip: send everything this device has, the script merges by id (newest edit wins),
+// and sends back the merged result. Deletes travel as tombstones so a deleted item stays deleted.
+let sy = { busy: false, again: false, last: '', err: '', t: null };
+const bump = () => { if(!CFG.url) return; clearTimeout(sy.t); sy.t = setTimeout(() => sync(), 2000); };
+function rowsOut(){
+  const r = [{ k: 'window', id: 'main', u: S.wu, data: { start: S.start, end: S.end, dpw: S.dpw, buf: S.buf } }];
+  S.subs.forEach(x => r.push({ k: 'sub', id: x.id, u: x.u, data: x }));
+  S.courses.forEach(c => r.push({ k: 'course', id: c.id, u: c.u, data: c }));
+  S.sessions.forEach(x => r.push({ k: 'session', id: x.id, u: x.u, data: x }));
+  S.resume.forEach(x => r.push({ k: 'resume', id: x.id, u: x.u, data: x }));
+  Object.keys(S.tomb).forEach(key => { const [k, id] = key.split('|'); r.push({ k, id, u: S.tomb[key], del: 1 }); });
+  return r;
+}
+function applyRows(rows){
+  rows.forEach(r => {
+    if(r.k === 'window'){ if(r.data && r.u > S.wu){ S.start = r.data.start; S.end = r.data.end; S.dpw = r.data.dpw || 7; S.buf = r.data.buf || 0; S.wu = r.u; } return; }
+    const list = { course: S.courses, session: S.sessions, resume: S.resume, sub: S.subs }[r.k]; if(!list) return;
+    const key = r.k+'|'+r.id, tu = S.tomb[key], cur = list.find(x => x.id === r.id);
+    if(r.del){
+      if(!tu || r.u > tu) S.tomb[key] = r.u;
+      if(cur && cur.u <= r.u) list.splice(list.indexOf(cur), 1);
+      return;
+    }
+    if(!r.data || (tu && tu >= r.u)) return;
+    r.data.u = r.u;
+    if(!cur) list.push(r.data); else if(r.u > cur.u) list[list.indexOf(cur)] = r.data;
+  });
+}
+async function sync(manual){
+  if(!CFG.url){ if(manual){ sy.err = 'Paste your Web App URL first.'; softRender(); } return; }
+  if(sy.busy){ sy.again = true; return; }
+  sy.busy = true; sy.err = ''; if(manual) softRender();
+  try {
+    const body = JSON.stringify({ type: 'sync', secret: CFG.secret || '', rows: rowsOut() });
+    const res = await fetch(CFG.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, keepalive: body.length < 60000, body });
+    const d = await res.json();
+    if(d.status !== 'ok') throw new Error(d.message || 'The script rejected the request.');
+    applyRows(d.rows || []); migrate(); save(true);
+    sy.last = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch(e){
+    sy.err = /json|Unexpected token|Failed to fetch|NetworkError/i.test(e.message || '')
+      ? 'Could not reach the script. Check the URL, that access is set to “Anyone”, and your connection.' : e.message;
+  }
+  sy.busy = false;
+  if(sy.again){ sy.again = false; bump(); }
+  softRender();
+}
+function softRender(){
+  const a = document.activeElement;
+  if(a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.closest('#main')){ hdr(); return; }
+  const f = flash, fe = flashErr; render(); flash = f; flashErr = fe;
+}
+document.addEventListener('visibilitychange', () => { if(CFG.url) sync(); });
+window.addEventListener('online', () => sync());
+
+function syncCard(){
+  const st = !CFG.url ? 'Not connected — your data lives on this device only.' : sy.busy ? 'Syncing…' : sy.err ? '' : sy.last ? 'Synced at '+sy.last+'.' : 'Connected.';
+  return `<div class="card"><h2>Sync between devices</h2>
+    <p class="mini">Paste the Web App URL from your Google Apps Script (setup steps are at the top of <strong>tracker-sync.gs</strong>). Use the same URL and secret on every device. Sessions, lectures, courses and the deadline then follow you everywhere. The running timer stays on the device that started it.</p>
+    <label>Web App URL</label><input type="url" data-g="url" value="${esc(CFG.url||'')}" placeholder="https://script.google.com/macros/s/…/exec">
+    <label>Shared secret (the same text you put in the script)</label><input type="text" data-g="secret" value="${esc(CFG.secret||'')}" autocomplete="off">
+    <div class="acts"><button class="p" data-a="sync"${sy.busy?' disabled':''}>Sync now</button></div>
+    <div class="msg${sy.err?' err':''}">${esc(sy.err || st)}</div></div>`;
+}
+function hdr(){
+  const p = plan();
+  document.getElementById('hdr').textContent = `Digital Rakyat · ${S.start} to ${S.end} · ${p.expired ? 'ended' : p.left+' days left'} · ${!CFG.url ? 'local only' : sy.busy ? 'syncing…' : sy.err ? 'sync problem' : sy.last ? 'synced '+sy.last : 'sync on'}`;
+}
+function render(){
+  hdr();
+  document.getElementById('nav').innerHTML = TABS.map(t => `<button data-tab="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}${t[0]==='log'&&S.timer?' ⏱':''}</button>`).join('');
+  document.getElementById('main').innerHTML = ({ log: logView, videos: videosView, courses: coursesView, stats: statsView, set: setView })[tab]();
+  flash = '';
+}
+document.addEventListener('click', e => {
+  const tb = e.target.closest('[data-tab]'); if(tb){ tab = tb.dataset.tab; render(); window.scrollTo(0,0); return; }
+  const a = e.target.closest('[data-a]'); if(!a) return;
+  const id = a.dataset.id, act = a.dataset.a;
+  if(act === 'start') startTimer();
+  else if(act === 'sync') sync(true);
+  else if(act === 'pause') toggleTimer();
+  else if(act === 'stop') stopTimer();
+  else if(act === 'save') saveSession();
+  else if(act === 'discard'){ pending = null; draft = {}; render(); }
+  else if(act === 'chip'){ draft.min = a.dataset.m; document.querySelector('[data-d="min"]').value = a.dataset.m; }
+  else if(act === 'del'){ if(confirm('Delete this session?')){ S.sessions = S.sessions.filter(x => x.id !== id); S.tomb['session|'+id] = now(); save(); render(); } }
+  else if(act === 'radd') addResume();
+  else if(act === 'pos'){
+    const it = S.resume.find(x => x.id === id), v = prompt('Stopped at (12:34, 1:02:03 or 5m30s):', it.pos ? fpos(it.pos) : ''), t = parseTime(v);
+    if(v !== null){ if(t === null) say('Time not understood.', 1); else { it.pos = t; it.touched = it.u = now(); save(); } render(); }
+  }
+  else if(act === 'fin') finishResume(id);
+  else if(act === 'rdel'){ if(confirm('Delete this saved lecture?')){ S.resume = S.resume.filter(x => x.id !== id); S.tomb['resume|'+id] = now(); save(); render(); } }
+  else if(act === 'cdone'){
+    const c = course(id), sb = subsOf(id);
+    if(sb.length){ const all = sb.every(z => z.done); sb.forEach(z => { z.done = !all; z.u = now(); }); } else { c.done = !c.done; c.u = now(); }
+    save(); render();
+  }
+  else if(act === 'subdone'){ const z = S.subs.find(x => x.id === id); if(z){ z.done = !z.done; z.u = now(); save(); render(); } }
+  else if(act === 'imphrs') importHours(id);
+  else if(act === 'subreset'){ (FIXSUBS[id] || []).forEach((x,i) => { const z = S.subs.find(q => q.id === id+'-'+(i+1)); if(z){ z.name = x[0]; z.h = x[1]; z.u = now(); } }); save(); render(); }
+  else if(act === 'end3'){ S.end = addMonths(S.start,3); S.wu = now(); save(); render(); }
+  else if(act === 'exp') download('coursera-tracker-backup-'+today()+'.json', JSON.stringify(S,null,1), 'application/json');
+  else if(act === 'csv'){
+    const q = v => '"'+String(v ?? '').replace(/"/g,'""')+'"';
+    download('coursera-sessions-'+today()+'.csv', ['date,course,activity,minutes,videos,note'].concat(S.sessions.sort((a,b) => a.date.localeCompare(b.date)).map(x => [x.date,course(x.course).name,x.act,x.min,x.videos||0,x.note].map(q).join(','))).join('\n'), 'text/csv');
+  }
+  else if(act === 'imp') document.getElementById('imp').click();
+  else if(act === 'reset'){ if(confirm('Erase every course setting, session and saved lecture on this device? If sync is on, the Sheet keeps its copy and will bring it back on the next sync.')){ S = defaults(); save(true); render(); } }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if(t.dataset.d) draft[t.dataset.d] = t.value;
+  if(t.dataset.r) rdraft[t.dataset.r] = t.value;
+  if(t.dataset.p) pastes[t.dataset.p] = t.value;
+  if(t.dataset.w){ draft.wi = t.value; const o = document.getElementById('wiOut'); if(o) o.innerHTML = wiText(parseFloat(t.value)); }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(t.dataset.g){ CFG[t.dataset.g] = t.value.trim(); saveCfg(); sy.err = ''; sync(true); return; }
+  if(t.dataset.b){ const [bid, f] = t.dataset.b.split('.'), z = S.subs.find(x => x.id === bid); if(z){ z[f] = f === 'h' ? Math.max(0, parseFloat(t.value) || 0) : t.value; z.u = now(); save(); render(); } return; }
+  if(t.dataset.s){ S[t.dataset.s] = ['dpw','buf'].includes(t.dataset.s) ? Math.min(t.dataset.s === 'dpw' ? 7 : 30, Math.max(t.dataset.s === 'dpw' ? 1 : 0, parseInt(t.value,10) || 0)) : t.value; if(S.end < S.start) S.end = addMonths(S.start,3); S.wu = now(); save(); render(); }
+  if(t.dataset.c){
+    const [i,f] = t.dataset.c.split('.'), num = ['targetH','totalVideos','priority'].includes(f);
+    S.courses[+i][f] = num ? Math.max(0, parseFloat(t.value) || 0) : t.value; if(f === 'priority') S.courses[+i][f] = +t.value; S.courses[+i].u = now(); save(); render();
+  }
+  if(t.dataset.d === 'course'){ delete draft.sub; render(); }
+  if(t.dataset.d === 'tcourse'){ delete draft.tsub; render(); }
+});
+document.getElementById('imp').addEventListener('change', e => {
+  const f = e.target.files[0]; if(!f) return;
+  f.text().then(txt => {
+    try { const d = JSON.parse(txt); if(!Array.isArray(d.courses) || !Array.isArray(d.sessions)) throw 0;
+      if(confirm('Replace everything on this device with this backup?')){ S = Object.assign(defaults(), d); migrate(); save(); say('Backup restored.'); }
+    } catch(err){ say('That file is not a valid backup.', 1); }
+    e.target.value = ''; render();
+  });
+});
+setInterval(() => { const el = document.getElementById('clk'); if(el && S.timer){ el.textContent = fclk(elapsed(S.timer)); el.classList.toggle('pz', !S.timer.running); } }, 1000);
+render();
+if(CFG.url) sync();
+</script>
+</body>
+</html>
