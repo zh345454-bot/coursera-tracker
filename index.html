@@ -137,7 +137,7 @@ let CFG = {}; try { CFG = JSON.parse(localStorage.getItem(KEY+'-cfg') || '{}'); 
 const saveCfg = () => { try { localStorage.setItem(KEY+'-cfg', JSON.stringify(CFG)); } catch(e){} };
 const save = quiet => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} if(!quiet) bump(); };
 
-let tab = 'log', draft = {}, rdraft = {}, pastes = {}, pending = null, flash = '', flashErr = false;
+let tab = 'log', draft = {}, rdraft = {}, pastes = {}, jd = { url: '', weeks: 4, week: 1, pct: 0, sub: '', outline: '' }, pending = null, flash = '', flashErr = false;
 const say = (m,err) => { flash = m; flashErr = !!err; };
 const course = id => S.courses.find(c => c.id === id) || S.courses[0];
 const subsOf = id => S.subs.filter(x => x.course === id).sort((a,b) => a.ord-b.ord);
@@ -163,7 +163,7 @@ function cStat(c){
   if(!sb.length){ const total = c.targetH || 0; return { total, rem: c.done ? 0 : Math.max(0, total - cMin(c.id)/60), items: [] }; }
   let pool = S.sessions.filter(x => x.course === c.id && !sb.some(z => z.id === x.sub)).reduce((a,x) => a+x.min, 0)/60;
   const items = sb.map(z => {
-    const lg = S.sessions.filter(x => x.sub === z.id).reduce((a,x) => a+x.min, 0)/60; let rem = 0;
+    const lg = S.sessions.filter(x => x.sub === z.id).reduce((a,x) => a+x.min, 0)/60 + (z.credit || 0); let rem = 0;
     if(!z.done){ const need = Math.max(0, z.h-lg), take = Math.min(need, pool); pool -= take; rem = need-take; }
     return { s: z, lg, rem };
   });
@@ -284,6 +284,64 @@ function importHours(cid){
   old.slice(found.length).forEach(z => { S.subs = S.subs.filter(q => q.id !== z.id); S.tomb['sub|'+z.id] = t; });
   delete pastes[cid]; say('Updated '+found.length+' courses ('+sum+' h).'); save(); render();
 }
+// ---------- jump to a lecture by link ----------
+// A Coursera link names the course (and lecture) but not how far into the course it is, so the
+// course is detected from the link and the position inside it comes from "week W of N".
+const toks = s => String(s||'').toLowerCase().replace(/&/g,' and ').split(/[^a-z0-9]+/).filter(Boolean);
+function parseLink(u){
+  const m = String(u||'').trim().match(/coursera\.org\/learn\/([^\/?#\s]+)(?:\/[a-zA-Z]+\/[^\/?#\s]+\/([^\/?#\s]+))?/i);
+  return m ? { slug: m[1].toLowerCase(), lec: m[2] ? decodeURIComponent(m[2]) : '' } : null;
+}
+function matchSub(slug){
+  const exact = S.subs.find(z => z.slug === slug); if(exact) return exact;
+  const a = new Set(toks(slug)); let best = null, bs = 0;
+  S.subs.forEach(z => { const b = new Set(toks(z.name)); let i = 0; a.forEach(t => { if(b.has(t)) i++; });
+    const sc = i/(a.size + b.size - i || 1); if(sc > bs){ bs = sc; best = z; } });
+  return bs >= 0.6 ? best : null;
+}
+// Turns copied course-outline text into an ordered list of item titles. Type labels
+// (Video:, Reading:…), durations, week headings and short noise lines are dropped.
+function parseOutline(text){
+  const out = [];
+  String(text||'').split(/\r?\n/).forEach(l => {
+    l = l.replace(/\s+/g,' ').trim();
+    if(!l || /^(week|module)\s*\d+/i.test(l) || /^\d+\s*(min|mins|minutes|hr|hrs|hours?)\b/i.test(l) || /^(completed|locked|\d+%)$/i.test(l)) return;
+    l = l.replace(/^(video|reading|quiz|lab|practice quiz|graded quiz|assignment|discussion prompt|ungraded plugin|plugin|peer review|app item)\s*[:·\-–—]\s*/i,'').replace(/\s*[·•|]\s*\d+\s*(min|mins|minutes|hr|hrs)\b.*$/i,'').trim();
+    if(l.length >= 4 && toks(l).length) out.push(l);
+  });
+  return out;
+}
+function findInOutline(items, lec){
+  const a = new Set(toks(lec)); let best = -1, bs = 0;
+  items.forEach((t,i) => { const b = new Set(toks(t)); let n = 0; a.forEach(x => { if(b.has(x)) n++; });
+    const sc = n/(a.size + b.size - n || 1); if(sc > bs){ bs = sc; best = i; } });
+  return bs >= 0.5 ? best : -1;
+}
+function jumpInfo(){
+  const L = parseLink(jd.url); if(!L) return { err: 'Paste a Coursera link that contains /learn/…' };
+  const z = S.subs.find(x => x.id === jd.sub) || matchSub(L.slug);
+  if(!z) return { L, err: 'Could not tell which course “'+L.slug+'” is. Pick it below.', pick: true };
+  const sb = subsOf(z.course), before = sb.filter(x => x.ord < z.ord), bh = before.reduce((a,x) => a+(x.done ? 0 : Math.max(0, x.h-(x.credit||0))), 0);
+  const weeks = Math.max(1, +jd.weeks||4), wk = Math.min(weeks, Math.max(1, +jd.week||1));
+  const otext = (jd.outline||'').trim() || z.outline || '', items = parseOutline(otext), idx = items.length >= 3 && L.lec ? findInOutline(items, L.lec) : -1;
+  const frac = idx >= 0 ? idx/items.length : ((wk-1)+(+jd.pct||0)/100)/weeks, credit = Math.round(z.h*frac*10)/10;
+  return { L, z, before, bh, weeks, wk, credit, c: course(z.course), otext, items, idx, hasOutline: items.length >= 3 };
+}
+function jumpText(){
+  const i = jumpInfo(); if(i.err) return i.err;
+  return `Detected: <strong>${esc(i.z.name)}</strong> (course ${i.z.ord} of ${subsOf(i.z.course).length} in ${esc(i.c.short)}). Will mark ${i.before.length} earlier course${i.before.length===1?'':'s'} done (${i.bh.toFixed(0)} h) and credit <strong>${i.credit} of ${i.z.h} h</strong> in this one (${i.idx >= 0 ? 'lecture found: item '+(i.idx+1)+' of '+i.items.length+' in the outline, '+i.idx+' items before it' : (i.hasOutline ? 'lecture not found in the outline, so using week '+i.wk+' of '+i.weeks : 'no outline yet, so using week '+i.wk+' of '+i.weeks)}). In total <strong>${(i.bh+i.credit).toFixed(1)} h</strong> counted as already done.`;
+}
+function applyJump(){
+  const i = jumpInfo(); if(i.err) return say(i.err, 1), render();
+  const t = now(), z = i.z;
+  i.before.forEach(x => { if(!x.done){ x.done = true; x.u = t; } });
+  z.credit = i.credit; z.done = false; z.slug = i.L.slug; if(i.hasOutline) z.outline = i.otext; z.u = t; jd.outline = '';
+  const url = jd.url.trim(), title = i.L.lec ? i.L.lec.replace(/-/g,' ').replace(/^./,c => c.toUpperCase()) : z.name;
+  let it = S.resume.find(x => x.url === url && !x.done);
+  if(!it){ it = { id: uid(), course: z.course, title, url, pos: 0, done: false, u: t }; S.resume.push(it); }
+  it.touched = it.u = t;
+  say('Applied: '+(i.bh+i.credit).toFixed(1)+' h counted as done.'); save(); render();
+}
 function download(name, text, type){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -345,7 +403,21 @@ function resumeRow(it, big){
 function videosView(){
   const open = S.resume.filter(x => !x.done).sort((a,b) => b.touched.localeCompare(a.touched));
   const done = S.resume.filter(x => x.done).length;
-  return `<div class="card hot"><h2>Continue where I stopped</h2>
+  const ji = jumpInfo(), nums = n => Array.from({length:n}, (_,k) => k+1);
+  const jump = `<div class="card"><h2>Jump to a lecture by link</h2>
+    <p class="mini">Paste any Coursera lecture link. The app finds the course, marks the earlier courses in that specialization as done, and credits the hours up to the week you are in. Re-apply later to move forward.</p>
+    <label>Lecture link</label><input type="text" data-j="url" value="${esc(jd.url)}" placeholder="https://www.coursera.org/learn/…/lecture/…">
+    <label>Course outline (paste once per course): on the Coursera course page, select the lecture list in the left menu or the syllabus, copy, paste. ${ji.z && ji.z.outline ? '<strong>An outline is already saved for this course.</strong>' : ''}</label>
+    <textarea rows="4" data-j="outline" placeholder="Paste the list of lectures in order. Video / Reading / Quiz labels and durations are ignored.">${esc(jd.outline)}</textarea>
+    <div class="mini" style="margin-top:6px">Week selector below is only used if the lecture can't be found in the outline.</div>
+    <div class="row"><div><label>This course has … weeks</label><select data-j="weeks">${nums(8).map(n => `<option value="${n}"${+jd.weeks===n?' selected':''}>${n}</option>`).join('')}</select></div>
+    <div><label>I am in week</label><select data-j="week">${nums(8).map(n => `<option value="${n}"${+jd.week===n?' selected':''}>${n}</option>`).join('')}</select></div>
+    <div><label>Through that week</label><select data-j="pct">${[0,25,50,75].map(n => `<option value="${n}"${+jd.pct===n?' selected':''}>${n}%</option>`).join('')}</select></div></div>
+    ${ji.pick ? `<label>Which course is it?</label><select data-j="sub"><option value="">Choose…</option>${S.subs.map(z => `<option value="${z.id}"${jd.sub===z.id?' selected':''}>${esc(course(z.course).short)} ${z.ord}. ${esc(z.name)}</option>`).join('')}</select>` : ''}
+    <div class="note" id="jOut">${jumpText()}</div>
+    <div class="acts"><button class="p" data-a="jump">Apply</button></div>
+    <div class="msg${flashErr?' err':''}">${esc(flash)}</div></div>`;
+  return jump + `<div class="card hot"><h2>Continue where I stopped</h2>
     ${open[0] ? '<div class="mini">Last one you were on</div>'+resumeRow(open[0],true) : '<p class="mini">Nothing saved yet. Add a lecture below.</p>'}</div>
   <div class="card"><h3>Save my spot</h3>
     <div class="row"><div><label>Course</label><select data-r="course">${cOpts(rdraft.course || nextCourse()?.id)}</select></div>
@@ -539,6 +611,7 @@ document.addEventListener('click', e => {
   }
   else if(act === 'subdone'){ const z = S.subs.find(x => x.id === id); if(z){ z.done = !z.done; z.u = now(); save(); render(); } }
   else if(act === 'imphrs') importHours(id);
+  else if(act === 'jump') applyJump();
   else if(act === 'subreset'){ (FIXSUBS[id] || []).forEach((x,i) => { const z = S.subs.find(q => q.id === id+'-'+(i+1)); if(z){ z.name = x[0]; z.h = x[1]; z.u = now(); } }); save(); render(); }
   else if(act === 'end3'){ S.end = addMonths(S.start,3); S.wu = now(); save(); render(); }
   else if(act === 'exp') download('coursera-tracker-backup-'+today()+'.json', JSON.stringify(S,null,1), 'application/json');
@@ -554,10 +627,12 @@ document.addEventListener('input', e => {
   if(t.dataset.d) draft[t.dataset.d] = t.value;
   if(t.dataset.r) rdraft[t.dataset.r] = t.value;
   if(t.dataset.p) pastes[t.dataset.p] = t.value;
+  if(t.dataset.j){ jd[t.dataset.j] = t.value; if(t.dataset.j === 'url') jd.sub = ''; const o = document.getElementById('jOut'); if(o) o.innerHTML = jumpText(); }
   if(t.dataset.w){ draft.wi = t.value; const o = document.getElementById('wiOut'); if(o) o.innerHTML = wiText(parseFloat(t.value)); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
+  if(t.dataset.j === 'url'){ render(); return; }
   if(t.dataset.g){ CFG[t.dataset.g] = t.value.trim(); saveCfg(); sy.err = ''; sync(true); return; }
   if(t.dataset.b){ const [bid, f] = t.dataset.b.split('.'), z = S.subs.find(x => x.id === bid); if(z){ z[f] = f === 'h' ? Math.max(0, parseFloat(t.value) || 0) : t.value; z.u = now(); save(); render(); } return; }
   if(t.dataset.s){ S[t.dataset.s] = ['dpw','buf'].includes(t.dataset.s) ? Math.min(t.dataset.s === 'dpw' ? 7 : 30, Math.max(t.dataset.s === 'dpw' ? 1 : 0, parseInt(t.value,10) || 0)) : t.value; if(S.end < S.start) S.end = addMonths(S.start,3); S.wu = now(); save(); render(); }
